@@ -56,8 +56,8 @@ make install
 ### Build QompSim
 
 ```Shell
-git clone https://github.com/s-imamura_fjres/QompSim.git
-cd QompSim
+git clone https://github.com/FujitsuResearch/Compression-based-State-Vector-Simulator.git
+cd Compression-based-State-Vector-Simulator
 python3 -m venv venv
 source venv/bin/activate
 pip install --upgrade pip
