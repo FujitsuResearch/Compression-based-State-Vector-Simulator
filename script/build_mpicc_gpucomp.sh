@@ -1,0 +1,10 @@
+#!/bin/sh
+
+export C_COMPILER=mpicc
+export CXX_COMPILER=mpicxx
+#export CXX_COMPILER=mpic++
+export USE_GPU=No
+export USE_MPI=Yes
+export USE_GPU_COMP=Yes
+
+./script/build_gcc.sh

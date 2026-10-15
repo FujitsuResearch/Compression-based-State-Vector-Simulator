@@ -1,0 +1,39 @@
+[build-system]
+requires = ["wheel", "setuptools >= 77", "setuptools_scm[toml]"]
+build-backend = "setuptools.build_meta"
+
+[project]
+dynamic = ["version"]
+name = "qompsim"
+description = "Lossy compression-based state-vector quantum circuit simulator"
+authors = [
+    { name = "Fujitsu Limited", email = "s-imamura@fujitsu.com" }
+]
+readme = "README.md"
+license = "Apache-2.0"
+license-files = [
+    "LICENSE",
+    "NOTICE",
+    "THIRD_PARTY_LICENSES/*",
+]
+dependencies = [
+    "numpy",
+    "mpi4py"
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Science/Research",
+    "Operating System :: MacOS :: MacOS X",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX",
+    "Programming Language :: Python",
+    "Topic :: Communications :: Email"
+]
+
+[tool.setuptools_scm]
+write_to = "pysrc/qulacs/_version.py"
+
+[tool.setuptools]
+include-package-data = true
+zip-safe = false
