@@ -80,6 +80,7 @@ C_COMPILER=mpicc CXX_COMPILER=mpicxx \
 Run a 28-qubit GHZ circuit with two MPI processes, assigning one process to each socket and GPU:
 
 ```Shell
+chmod +x bind_gpu.sh
 mkdir -p logdir
 mpirun -n 2 --map-by ppr:1:socket --bind-to socket ./bind_gpu.sh \
   python script/run_sim.py \
