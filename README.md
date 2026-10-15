@@ -9,6 +9,7 @@ This is *QompSim*, a scalable distributed state-vector simulator that integrates
 * CMake 3.5 or later (3.30.4 or later when using RMM)
 * OpenMPI
 * Boost
+* libzstd-dev (only for the CPU implementation)
 * CUDA 12 (only for the GPU implementation)
 
 ### Install SZ3 (used by the CPU implementation)
