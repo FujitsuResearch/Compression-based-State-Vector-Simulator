@@ -24,11 +24,9 @@ classifiers = [
     "Development Status :: 3 - Alpha",
     "Environment :: Console",
     "Intended Audience :: Science/Research",
-    "Operating System :: MacOS :: MacOS X",
-    "Operating System :: Microsoft :: Windows",
-    "Operating System :: POSIX",
+    "Operating System :: POSIX :: Linux",
     "Programming Language :: Python",
-    "Topic :: Communications :: Email"
+    "Topic :: Scientific/Engineering :: Physics"
 ]
 
 [tool.setuptools_scm]

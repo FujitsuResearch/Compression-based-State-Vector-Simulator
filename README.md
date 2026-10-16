@@ -2,6 +2,8 @@
 
 This is *QompSim*, a scalable distributed state-vector simulator that integrates error-bounded lossy compression and all-zero data compression. The implementation is based on *Qulacs* [1,2] and employs the stage-level block-wise lossy compression technique proposed in *BMQSim* [3].
 
+The Python distribution is named `qompsim`, but its import package is `qulacs`. QompSim is a separate project from upstream Qulacs; because both use the `qulacs` import namespace, installing them in the same Python environment is not supported and may cause conflicts.
+
 ## Build Instructions
 
 ### Required Packages
@@ -9,7 +11,6 @@ This is *QompSim*, a scalable distributed state-vector simulator that integrates
 * CMake 3.5 or later (3.30.4 or later when using RMM)
 * OpenMPI
 * Boost
-* libzstd-dev (only for the CPU implementation)
 * CUDA 12 (only for the GPU implementation)
 
 ### Install SZ3 (used by the CPU implementation)
@@ -80,7 +81,6 @@ C_COMPILER=mpicc CXX_COMPILER=mpicxx \
 Run a 28-qubit GHZ circuit with two MPI processes, assigning one process to each socket and GPU:
 
 ```Shell
-chmod +x bind_gpu.sh
 mkdir -p logdir
 mpirun -n 2 --map-by ppr:1:socket --bind-to socket ./bind_gpu.sh \
   python script/run_sim.py \
@@ -185,3 +185,5 @@ QompSim is licensed under the Apache License 2.0. See [LICENSE](LICENSE).
 
 This repository contains software derived from Qulacs, which is licensed under the MIT License.
 See [THIRD_PARTY_LICENSES/Qulacs-LICENSE.txt](THIRD_PARTY_LICENSES/Qulacs-LICENSE.txt).
+
+nvCOMP is proprietary NVIDIA software and is subject to NVIDIA's applicable license terms; it is not included in this repository.
