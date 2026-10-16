@@ -11,6 +11,7 @@ The Python distribution is named `qompsim`, but its import package is `qulacs`. 
 * CMake 3.5 or later (3.30.4 or later when using RMM)
 * OpenMPI
 * Boost
+* libzstd-dev (only for the CPU implementation)
 * CUDA 12 (only for the GPU implementation)
 
 ### Install SZ3 (used by the CPU implementation)
@@ -82,6 +83,7 @@ Run a 28-qubit GHZ circuit with two MPI processes, assigning one process to each
 
 ```Shell
 mkdir -p logdir
+chmod +x bind_gpu.sh
 mpirun -n 2 --map-by ppr:1:socket --bind-to socket ./bind_gpu.sh \
   python script/run_sim.py \
     --simulator fidelity \
@@ -94,7 +96,7 @@ mpirun -n 2 --map-by ppr:1:socket --bind-to socket ./bind_gpu.sh \
 
 | Mode | Description |
 | --- | --- |
-| `qulacs` | Run upstream Qulacs only. |
+| `qulacs` | Run the original (uncompressed) Qulacs simulator included in this package. |
 | `qompsim` | Run QompSim only. |
 | `fidelity` | Run both simulators and compare their state vectors to calculate the QompSim fidelity. |
 
