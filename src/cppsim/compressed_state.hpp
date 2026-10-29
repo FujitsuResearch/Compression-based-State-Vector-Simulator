@@ -1,6 +1,10 @@
 #pragma once
 
 #include "state.hpp"
+#include <cmath>
+#include <stdexcept>
+#include <random>
+#include <algorithm>
 
 class CompressedQuantumState : public QuantumStateCpu {
 private:
@@ -247,6 +251,7 @@ public:
         for (UINT i = 0; i < nblocks; i++) {
             free(block_pointers[i]);
         }
+        if (_state_vector != nullptr) { free(_state_vector); _state_vector = nullptr; }  // SPIKE
 #ifdef _USE_GPU_COMP
 
 #ifdef _USE_RMM
@@ -1586,8 +1591,98 @@ public:
         ::normalize(squared_norm, this->data_c(), _dim);
     }
 
+
+    // SPIKE: block-wise sampling over the compressed state.
+    // Memory: one decompressed block (2^B amplitudes) at a time.
+    // MPI: block masses are all-gathered; every rank draws the same multinomial
+    // split of shots over global blocks (same seed), samples its own blocks,
+    // and rank 0 gathers the global indices. Other ranks return an empty list.
+    std::vector<ITYPE> sampling_blockwise(UINT n_shots, UINT seed) {
+        int rank = 0, nranks = 1;
+#ifdef _USE_MPI
+        MPIutil& mpiutil = MPIutil::get_inst();
+        rank = mpiutil.get_rank(); nranks = mpiutil.get_size();
+#endif
+        auto decompress = [&](UINT b) -> CPPCTYPE* {
+#ifdef _USE_GPU_COMP
+            return decompress_SV_block_GPU(block_pointers[b], blocks_bytes[b]);
+#else
+            return decompress_SV_block(block_pointers[b], blocks_bytes[b]);
+#endif
+        };
+        std::vector<double> local_mass(nblocks, 0.0);
+        for (UINT b = 0; b < nblocks; b++) {
+            if (block_pointers[b] == nullptr) continue;      // all-zero block
+            CPPCTYPE* blk = decompress(b);
+            double m = 0.0;
+            for (UINT j = 0; j < namps_per_block; j++) m += std::norm(blk[j]);
+            local_mass[b] = m;
+            free(blk);
+        }
+        std::vector<double> mass(static_cast<size_t>(nblocks) * nranks);
+#ifdef _USE_MPI
+        MPI_Allgather(local_mass.data(), nblocks, MPI_DOUBLE, mass.data(), nblocks, MPI_DOUBLE, MPI_COMM_WORLD);
+#else
+        mass = local_mass;
+#endif
+        double total = 0.0;
+        for (double m : mass) total += m;                   // lossy: total is not exactly 1
+        if (!(total > 0.0) || !std::isfinite(total)) {
+            throw std::domain_error(
+                "CompressedQuantumState::sampling_blockwise: "
+                "state has no finite positive probability mass");
+        }
+        std::mt19937_64 rng(seed);
+        std::vector<UINT> shots(mass.size(), 0);
+        UINT left = n_shots; double rest = total;
+        for (size_t g = 0; g < mass.size() && left > 0; g++) {
+            double p = rest > 0 ? std::min(1.0, mass[g] / rest) : 0.0;
+            std::binomial_distribution<UINT> bin(left, p);
+            UINT k = (g + 1 == mass.size()) ? left : bin(rng);
+            shots[g] = k; left -= k; rest -= mass[g];
+        }
+        std::vector<ITYPE> mine;
+        std::mt19937_64 rng_local(seed + 1 + rank);
+        std::uniform_real_distribution<double> uni(0.0, 1.0);
+        for (UINT b = 0; b < nblocks; b++) {
+            UINT k = shots[static_cast<size_t>(rank) * nblocks + b];
+            if (k == 0) continue;
+            CPPCTYPE* blk = decompress(b);
+            std::vector<double> cdf(namps_per_block);
+            double acc = 0.0;
+            for (UINT j = 0; j < namps_per_block; j++) { acc += std::norm(blk[j]); cdf[j] = acc; }
+            free(blk);
+            ITYPE base = (static_cast<ITYPE>(rank) << this->inner_qc) + static_cast<ITYPE>(b) * namps_per_block;
+            for (UINT s = 0; s < k; s++) {
+                double r = uni(rng_local) * acc;
+                UINT j = std::lower_bound(cdf.begin(), cdf.end(), r) - cdf.begin();
+                if (j >= namps_per_block) j = namps_per_block - 1;
+                mine.push_back(base + j);
+            }
+        }
+#ifdef _USE_MPI
+        int my_n = static_cast<int>(mine.size());
+        std::vector<int> counts(nranks), displs(nranks, 0);
+        MPI_Gather(&my_n, 1, MPI_INT, counts.data(), 1, MPI_INT, 0, MPI_COMM_WORLD);
+        std::vector<ITYPE> all;
+        if (rank == 0) {
+            for (int r = 1; r < nranks; r++) displs[r] = displs[r - 1] + counts[r - 1];
+            all.resize(displs[nranks - 1] + counts[nranks - 1]);
+        }
+        static_assert(sizeof(ITYPE) == sizeof(unsigned long long), "ITYPE size");
+        MPI_Gatherv(mine.data(), my_n, MPI_UNSIGNED_LONG_LONG, all.data(), counts.data(), displs.data(),
+                    MPI_UNSIGNED_LONG_LONG, 0, MPI_COMM_WORLD);
+        if (rank == 0) std::shuffle(all.begin(), all.end(), rng);
+        return all;
+#else
+        std::shuffle(mine.begin(), mine.end(), rng);
+        return mine;
+#endif
+    }
+
     CPPCTYPE* get_decompressed_state_vector() {
         CPPCTYPE* decomp_block;
+        if (this->_state_vector != nullptr) free(this->_state_vector);  // SPIKE: avoid leak on repeated readout
         this->_state_vector = (CPPCTYPE*)malloc(sizeof(CPPCTYPE) * this->_dim);
 
         for (ITYPE i = 0; i < nblocks; i++) {

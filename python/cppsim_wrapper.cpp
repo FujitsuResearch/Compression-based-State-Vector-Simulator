@@ -497,6 +497,9 @@ PYBIND11_MODULE(qulacs_core, m) {
                 return vec;
             },
             "Get state vector")
+        .def("sampling_blockwise", &CompressedQuantumState::sampling_blockwise,
+            "SPIKE: block-wise sampling over the compressed state (rank 0 returns all shots)",
+            py::arg("sampling_count"), py::arg("random_seed"))
         .def("get_total_times",
             [](CompressedQuantumState& state) -> py::dict {
                 py::dict times;
